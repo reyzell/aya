@@ -102,7 +102,7 @@ pub use crate::programs::{
     sk_lookup::SkLookup,
     sk_msg::SkMsg,
     sk_skb::{SkSkb, SkSkbKind},
-    sock_ops::SockOps,
+    sock_ops::{SockOps, SockOpsFlags},
     socket_filter::{SocketFilter, SocketFilterError},
     tc::{SchedClassifier, TcAttachType, TcError},
     tp_btf::BtfTracePoint,

@@ -253,13 +253,22 @@ impl ProgAttachLink {
         target_fd: BorrowedFd<'_>,
         attach_type: bpf_attach_type,
     ) -> Result<Self, ProgramError> {
+        Self::attach_with_flags(prog_fd, target_fd, attach_type, 0)
+    }
+
+    pub(crate) fn attach_with_flags(
+        prog_fd: BorrowedFd<'_>,
+        target_fd: BorrowedFd<'_>,
+        attach_type: bpf_attach_type,
+        flags: u32,
+    ) -> Result<Self, ProgramError> {
         // The link is going to own this new file descriptor so we are
         // going to need a duplicate whose lifetime we manage. Let's
         // duplicate it prior to attaching it so the new file
         // descriptor is closed at drop in case it fails to attach.
         let prog_fd = prog_fd.try_clone_to_owned()?;
         let target_fd = target_fd.try_clone_to_owned()?;
-        bpf_prog_attach(prog_fd.as_fd(), target_fd.as_fd(), attach_type)?;
+        bpf_prog_attach(prog_fd.as_fd(), target_fd.as_fd(), attach_type, flags)?;
 
         let prog_fd = ProgramFd(prog_fd);
         Ok(Self {

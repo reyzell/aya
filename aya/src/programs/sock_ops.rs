@@ -2,12 +2,26 @@
 use std::os::fd::AsFd;
 
 use crate::{
-    generated::{bpf_attach_type::BPF_CGROUP_SOCK_OPS, bpf_prog_type::BPF_PROG_TYPE_SOCK_OPS},
+    generated::{
+        bpf_attach_type::BPF_CGROUP_SOCK_OPS, bpf_prog_type::BPF_PROG_TYPE_SOCK_OPS,
+        BPF_F_ALLOW_OVERRIDE, BPF_F_ALLOW_MULTI,
+    },
     programs::{
         define_link_wrapper, load_program, ProgAttachLink, ProgAttachLinkId, ProgramData,
         ProgramError,
     },
 };
+
+bitflags::bitflags! {
+    /// Flags passed to [`SockOps::attach()`].
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct SockOpsFlags: u32 {
+        /// Allow the eBPF program to be overridden by ones in a descendent cgroup.
+        const ALLOW_OVERRIDE = BPF_F_ALLOW_OVERRIDE;
+        /// Allow multiple eBPF programs to be attached.
+       const ALLOW_MULTI = BPF_F_ALLOW_MULTI;
+    }
+}
 
 /// A program used to work with sockets.
 ///
@@ -58,9 +72,16 @@ impl SockOps {
     ///
     /// The returned value can be used to detach, see [SockOps::detach].
     pub fn attach<T: AsFd>(&mut self, cgroup: T) -> Result<SockOpsLinkId, ProgramError> {
+        self.attach_with_flags(cgroup, SockOpsFlags::empty())
+    }
+
+    /// Attaches the program to the given cgroup.
+    ///
+    /// The returned value can be used to detach, see [SockOps::detach].
+    pub fn attach_with_flags<T: AsFd>(&mut self, cgroup: T, flags: SockOpsFlags) -> Result<SockOpsLinkId, ProgramError> {
         let prog_fd = self.fd()?;
 
-        let link = ProgAttachLink::attach(prog_fd.as_fd(), cgroup.as_fd(), BPF_CGROUP_SOCK_OPS)?;
+        let link = ProgAttachLink::attach_with_flags(prog_fd.as_fd(), cgroup.as_fd(), BPF_CGROUP_SOCK_OPS, flags.bits())?;
         self.data.links.insert(SockOpsLink::new(link))
     }
 
@@ -88,3 +109,15 @@ define_link_wrapper!(
     ProgAttachLink,
     ProgAttachLinkId
 );
+
+#[cfg(test)]
+mod tests {
+    use super::SockOpsFlags;
+
+    #[test]
+    fn test_sock_ops_flags() {
+        assert_eq!(SockOpsFlags::empty().bits(), 0);
+        assert!(SockOpsFlags::ALLOW_OVERRIDE.bits() != 0);
+        assert!(SockOpsFlags::ALLOW_MULTI.bits() != 0);
+    }
+}

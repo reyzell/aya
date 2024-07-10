@@ -68,7 +68,8 @@ impl LircMode2 {
         let prog_fd = prog_fd.try_clone()?;
         let lircdev_fd = lircdev.as_fd().try_clone_to_owned()?;
 
-        bpf_prog_attach(prog_fd.as_fd(), lircdev_fd.as_fd(), BPF_LIRC_MODE2)?;
+        const NO_FLAGS : u32 = 0;
+        bpf_prog_attach(prog_fd.as_fd(), lircdev_fd.as_fd(), BPF_LIRC_MODE2, NO_FLAGS)?;
 
         self.data.links.insert(LircLink::new(prog_fd, lircdev_fd))
     }
